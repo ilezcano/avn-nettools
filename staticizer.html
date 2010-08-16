@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>The Staticizer</title>
+
+<script type="text/javascript" src="staticizer.js" >
+</script>
+
+<style type="text/css">
+body {background-image: url(/images/radbkgnd.gif); font-family: Verdana}
+h1 { font-size: 20pt; background-color: #0050a0; color: White }
+div#willtestwith {padding: 2%}
+</style>
+</head>
+
+<body>
+<h1>The Staticizer</h1>
+<div id="intro">
+    <img
+        src="http://www.w3.org/Icons/valid-xhtml10"
+        alt="Valid XHTML 1.0 Strict" height="31" width="88" style="float:right;clear:left;" />
+    <img style="float:right; clear:right;"
+        src="/images/vim_created.gif.png"
+        alt="I don't need no stinkin' IDE!" />
+<p>Managing the static translations on a PIX is an arduous, frustrating task. As such, I've written this tool to assist me in quickly configuring these statics.</p>
+<p>In it's current form, this tool will break out a single subnet from our 134.65.0.0 and 172.16.0.0 network ranges.</p>
+<p>Please note that this tool relies heavily on JavaScript. You may need to adjust your browser to run it.</p>
+<hr />
+</div>
+
+<div><form action="">
+<div>
+<label>Higher Security Interface&nbsp;<input type="text" name="lowsecurity" value="inside" /></label>
+<label>Lower Security Interface&nbsp;<input type="text" name="highsecurity" value="outside" /></label>
+</div>
+</form>
+
+<form action="">
+<fieldset><legend>IP Address</legend>
+<input type="text" size="3" value="134" onchange="checkquad(this);updatetestoutput();" />.
+<input type="text" size="3" value="65" onchange="checkquad(this);updatetestoutput();" />.
+<input type="text" size="3" value="0" onchange="checkquad(this);updatetestoutput();" />.
+<input type="text" size="3" value="0" onchange="checkquad(this);updatetestoutput();" />
+
+<label>Mask Length(Netmask in CIDR Notation)
+	<input name="cidr" type="text" size="3" value="16" onchange="
+	var regex=/\D/;
+	if ( (regex.test(this.value)) || (this.value &lt; 8) || (this.value &gt; 32) ) // Watch for encoding here
+		{
+		this.value = this.defaultValue;
+		updatetestoutput();
+		return false;
+		}
+	updatetestoutput();
+	return true;" />
+	</label>
+
+</fieldset>
+</form>
+
+<div id="willtestwith">Script will run with IP Address: 134.65.0.0  and Netmask:255.255.0.0</div>
+
+
+<input type="button" value="Calculate Statics" onclick="
+updatetestoutput();
+var it = 0;
+var division = document.getElementById('outputdivision');
+division.innerHTML = '';
+var eightbitmask = 0xFF000000^0;
+var netmaskdecimal = (eightbitmask>>((document.forms[1].elements[5].value)-8));
+var ipaddrstring = (document.forms[1].elements[1].value+'.'+document.forms[1].elements[2].value+'.'+document.forms[1].elements[3].value+'.'+document.forms[1].elements[4].value);
+var ipaddrdecimal = quadtodec(ipaddrstring)&amp;netmaskdecimal; // Watch for encoding here
+findSurroundingNets(ipaddrdecimal, netmaskdecimal, division);
+" />
+
+</div>
+
+
+	<hr />
+
+
+
+	<div style="font-family:monospace;" id="outputdivision"></div>
+
+
+</body>
+</html>
+
