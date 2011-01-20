@@ -8,6 +8,7 @@ use XML::Dumper;
 use strict;
 
 my $res = Net::DNS::Resolver->new(persistent_udp=>1);
+my $resnr = Net::DNS::Resolver->new(recurse=>0, udp_timeout=>5);
 my $sixtofour = Net::IP->new('2002::/16');
 my $arrayref;
 my %soas;
@@ -174,6 +175,18 @@ foreach my $nsrecord (keys %nsrecords)
 			{
 			print $q->div({-style=>"color: blue;"},"$nsrecord contains NS of  $rrns, which is not an A record.");
 			next;
+			}
+
+		$resnr->nameservers($rrns);							#From here down, check to ensure that the secondary
+		$responsepacket = $resnr->send($nsrecord, 'NS');	#actually does have the zone configured.
+
+		if ($responsepacket)
+			{
+			print $q->div({-style=>"color: blue;"},"$nsrecord contains $rrns as NS, but the server appears not to be configured.") unless ($responsepacket->header->aa);
+			}
+		else
+			{
+			print $q->div({-style=>"color: red;"}, "For $nsrecord, no response from NS $rrns.");
 			}
 		}
 	}
