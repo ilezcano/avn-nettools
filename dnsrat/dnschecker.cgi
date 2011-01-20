@@ -1,12 +1,15 @@
 #!/usr/bin/perl -w
 
 use Net::DNS;
+use Net::IP;
 use CGI;
 use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
 use XML::Dumper;
 use strict;
 
 my $res = Net::DNS::Resolver->new(persistent_udp=>1);
+my $sixtofour = Net::IP->new('2002::/16');
+my $arrayref;
 my %soas;
 my %arecords;
 my %nsrecords;
@@ -78,12 +81,14 @@ foreach my $rr (@listofrr)
 		my $address = $rr->address;
 		my $name = $rr->name;
 
+		next if ($address eq '255.255.255.255');
+
 		unless ($arecords{$address})
 			{
 			$arecords{$address} = [];
 			}
 
-		my $arrayref = $arecords{$address};
+		$arrayref = $arecords{$address};
 		my $found = grep(/\Q$name/, @$arrayref);
 		if ($found == 0)
 			{
@@ -91,13 +96,23 @@ foreach my $rr (@listofrr)
 			}
 
 		}
+	if ($rr->type eq "AAAA")
+		{
+		my $address = $rr->address;
+		my $name = $rr->name;
+
+		if ($sixtofour->overlaps(Net::IP->new($address)) == $IP_B_IN_A_OVERLAP)
+			{
+			print $q->div({-style=>"color: violet;"}, "$name has a 6to4 address of $address");
+			}
+		}
 	elsif ($rr->type eq "NS")
 		{
 		my $domainname = $rr->name;
 		my $nsname = $rr->nsdname;
 		$nsrecords{$domainname} = [] unless ($nsrecords{$domainname});
 
-		my $arrayref = $nsrecords{$domainname};
+		$arrayref = $nsrecords{$domainname};
 		my $found = grep(/\Q$nsname/, @$arrayref);
 		if ($found == 0)
 			{
@@ -137,7 +152,7 @@ foreach my $rr (@listofrr)
 
 foreach my $nsrecord (keys %nsrecords)
 	{
-	my $arrayref  = $nsrecords{$nsrecord};
+	$arrayref  = $nsrecords{$nsrecord};
 
 	print $q->div({-style=>"color: purple"},
 		"Only 1 NS record for $nsrecord")
@@ -158,33 +173,14 @@ foreach my $nsrecord (keys %nsrecords)
 		if ($type ne "A")
 			{
 			print $q->div({-style=>"color: blue;"},"$nsrecord contains NS of  $rrns, which is not an A record.");
+			next;
 			}
-#		else
-#			{
-#			my @oldnameserver = $res->nameservers;
-#			$res->nameservers($rrns);
-#			my $authoresp = $res->query($nsrecord, 'SOA');
-#			unless ($authoresp)
-#				{
-#				print $q->div({-style=>"color: red;"},"$nsrecord contains NS of  $rrns, which is not responsive.");
-#				next;
-#				}
-#			print $q->div({-style=>"color: orange;"},"$nsrecord contains NS of  $rrns, which reports that it isn't authoritative for the domain.") if ($authoresp->header->aa == 0);
-#				
-#			$res->nameservers(@oldnameserver);
-#
-#			}
 		}
-	}
-
-foreach my $arecord (keys %arecords)
-	{
-	my $arrayref  = $arecords{$arecord};
 	}
 
 foreach my $address (keys %arecords)
 	{
-	my $arrayref = $arecords{$address};
+	$arrayref = $arecords{$address};
 	if (@$arrayref > 1)
 		{
 		print $q->div("Multiple A records for $address, specifically", $q->ul($q->li($arrayref)));
