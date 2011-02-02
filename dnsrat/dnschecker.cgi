@@ -13,6 +13,7 @@ my $sixtofour = Net::IP->new('2002::/16');
 my $arrayref;
 my %soas;
 my %arecords;
+my %aaaarecords;
 my %nsrecords;
 my @listofrr;
 my $q=new CGI;
@@ -95,16 +96,24 @@ foreach my $rr (@listofrr)
 			{
 			push (@$arrayref, $name);
 			}
-
 		}
-	if ($rr->type eq "AAAA")
+	elsif ($rr->type eq "AAAA")
 		{
-		my $address = $rr->address;
+		my $address = Net::IP->new($rr->address);
 		my $name = $rr->name;
 
-		if ($sixtofour->overlaps(Net::IP->new($address)) == $IP_B_IN_A_OVERLAP)
+		$aaaarecords{$address->short} = [] unless ($aaaarecords{$address->short});
+
+		$arrayref = $aaaarecords{$address->short};
+		my $found = grep(/\Q$name/, @$arrayref);
+		if ($found == 0)
 			{
-			print $q->div({-style=>"color: violet;"}, "$name has a 6to4 address of $address");
+			push (@$arrayref, $name);
+			}
+
+		if ($sixtofour->overlaps($address) == $IP_B_IN_A_OVERLAP)
+			{
+			print $q->div({-style=>"color: violet;"}, "$name has a 6to4 address of " . $address->short);
 			}
 		}
 	elsif ($rr->type eq "NS")
@@ -197,6 +206,15 @@ foreach my $address (keys %arecords)
 	if (@$arrayref > 1)
 		{
 		print $q->div("Multiple A records for $address, specifically", $q->ul($q->li($arrayref)));
+		}
+	}
+
+foreach my $address (keys %aaaarecords)
+	{
+	$arrayref = $aaaarecords{$address};
+	if (@$arrayref > 1)
+		{
+		print $q->div("Multiple AAAA records for $address, specifically", $q->ul($q->li($arrayref)));
 		}
 	}
 print $q->end_html;
