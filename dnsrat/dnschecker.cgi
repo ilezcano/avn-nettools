@@ -4,6 +4,7 @@ use Net::DNS;
 use Net::IP;
 use CGI;
 use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
+use DateTime;
 use XML::Dumper;
 use strict;
 
@@ -15,6 +16,7 @@ my %soas;
 my %arecords;
 my %aaaarecords;
 my %nsrecords;
+my $dtnow = DateTime->now();
 my @listofrr;
 my $q=new CGI;
 my $domlist = $q->param('ListofDomains');
@@ -157,6 +159,21 @@ foreach my $rr (@listofrr)
 			{
 			print $q->div({-style=>"color: orange;"},"PTR value for $matchip points to $ptrdname, but this does not match A record.");
 			}
+		}
+	elsif ($rr->type eq "RRSIG")
+		{
+		next unless ($rr->typecovered eq 'SOA');
+		my $domainname = $rr->name;
+		my @timearray = $rr->sigexpiration =~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/;
+		my $dt = DateTime->new ( year => $timearray[0],
+			month =>$timearray[1],
+			day =>$timearray[2],
+			hour =>$timearray[3],
+			minute =>$timearray[4],
+			second =>$timearray[5]);
+
+		print $q->div({-style=>"color: red;"},"DNSSEC signature for $domainname out of date.") if ($dt < $dtnow);
+
 		}
 	}
 
